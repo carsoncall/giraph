@@ -12,12 +12,13 @@ import (
 )
 
 type Giraph struct {
-	Ctx    context.Context
-	DbConn neo4j.SessionWithContext
-	Parser sitter.Parser
+	Ctx          context.Context
+	DbConn       neo4j.SessionWithContext
+	Parser       sitter.Parser
+	CodebaseRoot string
 }
 
-func BirthGiraph(ctx context.Context, uri, username, password string) (*Giraph, error) {
+func BirthGiraph(ctx context.Context, uri, username, password, cbroot string) (*Giraph, error) {
 	connection, err := Connect(ctx, uri, username, password)
 	parser := sitter.NewParser()
 	parser.SetLanguage(typescript.GetLanguage())
@@ -25,18 +26,17 @@ func BirthGiraph(ctx context.Context, uri, username, password string) (*Giraph, 
 		fmt.Printf("failed to build Giraph: %s", err)
 	}
 	return &Giraph{
-		Ctx:    ctx,
-		DbConn: connection,
-		Parser: *parser,
+		Ctx:          ctx,
+		DbConn:       connection,
+		Parser:       *parser,
+		CodebaseRoot: cbroot,
 	}, nil
 }
 
 func Connect(ctx context.Context, uri, username, password string) (neo4j.SessionWithContext, error) {
 	driver, err := neo4j.NewDriverWithContext(uri, neo4j.BasicAuth(username, password, ""))
-	defer driver.Close(ctx)
 
 	session := driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
 
 	// greeting, err := session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 	// 	result, err := transaction.Run(ctx,
@@ -69,7 +69,6 @@ func parse(giraph Giraph, path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	fmt.Printf("Parsing file %s\n", path)
 	file, err := os.ReadFile(path)
 	tree, err := giraph.Parser.ParseCtx(giraph.Ctx, nil, file)
 	if err != nil {
@@ -77,7 +76,71 @@ func parse(giraph Giraph, path string, info os.FileInfo, err error) error {
 		return err
 	}
 
+	dbOp := func(node *sitter.Node) {
+		fmt.Printf("Match: %s", info.Name())
+		print := func(node *sitter.Node) {
+
+			startByte := node.StartByte()
+			endByte := node.EndByte()
+			fileName := file[startByte:endByte]
+			filePath := filepath.Join(giraph.CodebaseRoot, string(fileName))
+			fmt.Printf("File: %s \n", filePath)
+
+			query := fmt.Sprintf(` MERGE (a:Node{name: "%s"})
+MERGE (b:Node{name: "%s"})
+MERGE (a)-[r:Imports]-(b)
+RETURN a,b,r`, path, filePath)
+
+			// now an actual database operation
+			result, err := giraph.DbConn.Run(giraph.Ctx, query, nil)
+			if err != nil {
+				fmt.Printf("Error writing to database: %s\n", err)
+			}
+			if result.Next(giraph.Ctx) {
+				fmt.Printf("Wrote relationship to database\n")
+			}
+			result.Consume(giraph.Ctx)
+		}
+		bfs(node, "string_fragment", print)
+	}
+	root_node := tree.RootNode()
+	bfs(root_node, "import_statement", dbOp)
 	return nil
+}
+
+// func GetText(startByte, endByte int64, file os.File) {
+// 	// Seek to the start position
+// 	_, err := file.Seek(startByte, io.SeekStart)
+// 	if err != nil {
+// 		fmt.Println("Error seeking file:", err)
+// 		return
+// 	}
+
+// 	// Read the specific slice of bytes
+// 	buf := make([]byte, length)
+// 	_, err = file.Read(buf)
+// 	if err != nil {
+// 		fmt.Println("Error reading file:", err)
+// 		return
+// 	}
+// }
+
+func bfs(rootNode *sitter.Node, nodeType string, dbOp func(*sitter.Node)) {
+	queue := NewQueue()
+	queue.Enqueue(rootNode)
+
+	for !queue.IsEmpty() {
+		var node *sitter.Node = queue.Dequeue().(*sitter.Node)
+
+		if node.Type() == nodeType {
+			dbOp(node)
+		}
+
+		numChildren := node.ChildCount()
+		for i := 0; i < int(numChildren); i++ {
+			queue.Enqueue(node.Child(i))
+		}
+	}
 }
 
 func main() {
@@ -85,7 +148,7 @@ func main() {
 	ctx := context.Background()
 	var path string = os.Args[1]
 
-	giraph, err := BirthGiraph(ctx, "bolt://localhost:7687", "neo4j", "2ShutYoTrap")
+	giraph, err := BirthGiraph(ctx, "bolt://localhost:7687", "neo4j", "2ShutYoTrap", path)
 	if err != nil {
 		fmt.Print(err)
 	}
