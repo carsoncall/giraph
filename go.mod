@@ -1,4 +1,4 @@
-module example.com/m/v2
+module giraph
 
 go 1.22.1
 

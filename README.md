@@ -1,6 +1,21 @@
 # Giraph
 ### A codebase comprehension tool that leverages graphs to supercharge your work
 
+### Get started
+First, fetch the dependencies:
+`go mod tidy`
+Then, run it:
+`go run cmd/main.go`
+optionally, you can build the binary and run that:
+
+
+### Structure hints:
+- /cmd: entry point for the application. Code in this directory should be minimized if possible.
+- /internal: code that shouldn't be imported (application specific code)
+- /pkg: code that could be imported into other applications or libraries (generic code)
+- /vendor: where application dependencies are stored
+These standards were pulled from the (Golang Standards repo)[https://github.com/golang-standards/project-layout]
+
 Feature Goals:
 1. Show relationships between code files (using import statements). This is the simplest, and the thing that has been mostly implmented thus far.
 2. Show inheritance relationships. This functionality already exists in some form in other tools.
