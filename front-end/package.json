@@ -1,0 +1,5 @@
+{
+	"devDependencies": {
+		"@tomjs/vite-plugin-vscode": "^2.2.0"
+	}
+}
