@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	model "github.com/carsoncall/giraph/pkg/model"
+	"github.com/carsoncall/giraph/pkg/queue"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
@@ -66,16 +68,26 @@ func (giraph Giraph) parse(path string, info os.FileInfo, err error) error {
 			fileName := file[startByte:endByte]
 			filePath := filepath.Join(giraph.CodebaseRoot, string(fileName))
 			fmt.Printf("File: %s \n", filePath)
+			importer := model.Node{
+				Name:     path,
+				Contents: path, // for now??
+			}
+
+			importee := model.Node{
+				Name:     filePath,
+				Contents: filePath,
+			}
+
+			relationship := model.Relationship{
+				Name: "imports",
+			}
 
 			// now an actual database operation
-			result, err := giraph.DbConn.Run(giraph.Ctx, query, nil)
+			err := giraph.DB.PutRelationship(importer, importee, relationship)
+
 			if err != nil {
 				fmt.Printf("Error writing to database: %s\n", err)
 			}
-			if result.Next(giraph.Ctx) {
-				fmt.Printf("Wrote relationship to database\n")
-			}
-			result.Consume(giraph.Ctx)
 		}
 		bfs(node, "string_fragment", print)
 	}

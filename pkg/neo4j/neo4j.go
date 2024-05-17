@@ -3,7 +3,7 @@ package neo4j
 import (
 	"context"
 	"fmt"
-	"github.com/carsoncall/giraph/pkg/model"
+	model "github.com/carsoncall/giraph/pkg/model"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
@@ -26,11 +26,11 @@ func (DB *Neo4j) Connect(ctx context.Context, uri, username, password string) er
 	return nil
 }
 
-func (DB *Neo4j) PutRelationship(node1 Node, node2 Node, rel Relationship) error {
+func (DB *Neo4j) PutRelationship(node1 model.Node, node2 model.Node, rel model.Relationship) error {
 	query := fmt.Sprintf(`MERGE (a:Node{name: "%s"})
 						  MERGE (b:Node{name: "%s"})
 						  MERGE (a)-[r:"%s"]-(b)
-						  RETURN a,b,r`, node1.name, node2.name, rel.name)
+						  RETURN a,b,r`, node1.Name, node2.Name, rel.Name)
 	_, err := DB.session.ExecuteWrite(DB.ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(DB.ctx, query, map[string]any{})
 		if err != nil {

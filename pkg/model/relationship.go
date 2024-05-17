@@ -1,5 +1,5 @@
 package model
 
 type Relationship struct {
-	name string
+	Name string
 }
