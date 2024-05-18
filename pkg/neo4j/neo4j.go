@@ -29,7 +29,7 @@ func (DB *Neo4j) Connect(ctx context.Context, uri, username, password string) er
 func (DB *Neo4j) PutRelationship(node1 model.Node, node2 model.Node, rel model.Relationship) error {
 	query := fmt.Sprintf(`MERGE (a:Node{name: "%s"})
 						  MERGE (b:Node{name: "%s"})
-						  MERGE (a)-[r:"%s"]-(b)
+						  MERGE (a)-[r:%s]-(b)
 						  RETURN a,b,r`, node1.Name, node2.Name, rel.Name)
 	_, err := DB.session.ExecuteWrite(DB.ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(DB.ctx, query, map[string]any{})
