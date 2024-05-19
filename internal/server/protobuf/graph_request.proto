@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package graph;
+
+option go_package = ".";
+
+message GraphRequest {
+  repeated string node_names = 1;
+}

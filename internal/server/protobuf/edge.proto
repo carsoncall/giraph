@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package graph;
+
+option go_package = ".";
+
+message Edge {
+  string name = 1;
+  string source_node = 2;
+  string target_node = 3;
+}
