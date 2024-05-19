@@ -59,52 +59,66 @@ func (giraph Giraph) parse(path string, info os.FileInfo, err error) error {
 		return err
 	}
 
-	dbOp := func(node *sitter.Node) {
-		fmt.Printf("Match: %s", info.Name())
-		print := func(node *sitter.Node) {
+	typeName := ""
 
-			startByte := node.StartByte()
-			endByte := node.EndByte()
-			fileName := file[startByte:endByte]
-			filePath := filepath.Join(giraph.CodebaseRoot, string(fileName))
-			fmt.Printf("File: %s \n", filePath)
-			importer := model.Node{
-				Name:     path,
-				Contents: path, // for now??
-			}
-
-			importee := model.Node{
-				Name:     filePath,
-				Contents: filePath,
-			}
-
-			relationship := model.Relationship{
-				Name: "imports",
-			}
-
-			// now an actual database operation
-			err := giraph.DB.PutRelationship(importer, importee, relationship)
-
-			if err != nil {
-				fmt.Printf("Error writing to database: %s\n", err)
-			}
-		}
-		bfs(node, "string_fragment", print)
+	found := func(node *sitter.Node) bool {
+		return node.Type() == typeName
 	}
+
 	root_node := tree.RootNode()
-	bfs(root_node, "import_statement", dbOp)
+
+	typeName = "import_statement"
+	parentNode := bfs(root_node, found)
+
+	parentModelNode := model.Node{
+		Name:     info.Name(),
+		Contents: path,
+	}
+
+	typeName = "string_fragment"
+	childNode := bfs(parentNode, found)
+	childNodeContents := getContentsOfNode(childNode, file)
+
+	childModelNode := model.Node{
+		Name:     childNode.String(),
+		Contents: filepath.Join(giraph.CodebaseRoot, string(childNodeContents)),
+	}
+
+	rel := model.Relationship{
+		Name: "imports",
+	}
+
+	err = giraph.DB.PutRelationship(parentModelNode, childModelNode, rel)
+
+	if err != nil {
+		fmt.Printf("Error parsing import statement: %s", err.Error())
+	}
+
 	return nil
 }
 
-func bfs(rootNode *sitter.Node, nodeType string, dbOp func(*sitter.Node)) {
+func buildModelNode(name, contents string) *model.Node {
+	return &model.Node{
+		Name:     name,
+		Contents: contents,
+	}
+}
+
+func getContentsOfNode(node *sitter.Node, file []byte) (contents string) {
+	startByte := node.StartByte()
+	endByte := node.EndByte()
+	return string(file[startByte:endByte])
+}
+
+func bfs(rootNode *sitter.Node, found func(node *sitter.Node) bool) *sitter.Node {
 	queue := queue.NewQueue()
 	queue.Enqueue(rootNode)
 
 	for !queue.IsEmpty() {
 		var node *sitter.Node = queue.Dequeue().(*sitter.Node)
 
-		if node.Type() == nodeType {
-			dbOp(node)
+		if found(node) {
+			return node
 		}
 
 		numChildren := node.ChildCount()
@@ -112,21 +126,5 @@ func bfs(rootNode *sitter.Node, nodeType string, dbOp func(*sitter.Node)) {
 			queue.Enqueue(node.Child(i))
 		}
 	}
+	return nil
 }
-
-// func GetText(startByte, endByte int64, file os.File) {
-// 	// Seek to the start position
-// 	_, err := file.Seek(startByte, io.SeekStart)
-// 	if err != nil {
-// 		fmt.Println("Error seeking file:", err)
-// 		return
-// 	}
-
-// 	// Read the specific slice of bytes
-// 	buf := make([]byte, length)
-// 	_, err = file.Read(buf)
-// 	if err != nil {
-// 		fmt.Println("Error reading file:", err)
-// 		return
-// 	}
-// }
