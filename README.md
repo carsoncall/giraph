@@ -8,7 +8,7 @@ First, fetch the dependencies:
 
 Then, run it:
 
-`go run cmd/main.go`
+`go run cmd/main.go path/to/your/codebase`
 
 
 ### Structure hints:
