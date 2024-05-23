@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	model "github.com/carsoncall/giraph/pkg/model"
 	"github.com/carsoncall/giraph/pkg/queue"
@@ -16,10 +17,11 @@ type Giraph struct {
 	Ctx          context.Context
 	DB           DB
 	Parser       sitter.Parser
+	CodebasePath string
 	CodebaseRoot string
 }
 
-func BirthGiraph(ctx context.Context, uri, username, password, cbroot string) (*Giraph, error) {
+func BirthGiraph(ctx context.Context, uri, username, password, codebasePath, codebaseRoot string) (*Giraph, error) {
 	database := NewDatabase()
 	err := database.Connect(ctx, uri, username, password)
 	parser := sitter.NewParser()
@@ -31,12 +33,13 @@ func BirthGiraph(ctx context.Context, uri, username, password, cbroot string) (*
 		Ctx:          ctx,
 		DB:           database,
 		Parser:       *parser,
-		CodebaseRoot: cbroot,
+		CodebasePath: codebasePath,
+		CodebaseRoot: codebaseRoot,
 	}, nil
 }
 
-func (giraph Giraph) Walk(path string) error {
-	error := filepath.Walk(path, giraph.parse)
+func (giraph Giraph) Walk() error {
+	error := filepath.Walk(giraph.CodebasePath, giraph.parse)
 	return error
 }
 
@@ -70,18 +73,25 @@ func (giraph Giraph) parse(path string, info os.FileInfo, err error) error {
 	typeName = "import_statement"
 	parentNode := bfs(root_node, found)
 
+	// we have to store the names of things without the extension, because imports don't include extensions
+	// by default. This is stupid, and eventually we can implement the same convoluted logic that Typescript 
+	// uses to determine what file you mean when you have two files of the same name but different extensions
+	// in the same directory (in TSX, it checks .tsx, then .ts, then .jsx, then .js)
 	parentModelNode := model.Node{
-		Name:     info.Name(),
-		Contents: path,
+		Name:     removeExtension(info.Name()),
+		Contents: filepath.Join(giraph.CodebaseRoot,removeExtension(path)),
 	}
 
 	typeName = "string_fragment"
 	childNode := bfs(parentNode, found)
-	childNodeContents := getContentsOfNode(childNode, file)
+	childNodeName := getContentsOfNode(childNode, file)
+	
+	// determine whether import is a local file or an external dependency
+	childNodeContents := getFileNameIfExistsLocally(filepath.Dir(path), childNodeName)
 
 	childModelNode := model.Node{
-		Name:     childNode.String(),
-		Contents: filepath.Join(giraph.CodebaseRoot, string(childNodeContents)),
+		Name:     childNodeName,
+		Contents: childNodeContents,
 	}
 
 	rel := model.Relationship{
@@ -97,11 +107,28 @@ func (giraph Giraph) parse(path string, info os.FileInfo, err error) error {
 	return nil
 }
 
-func buildModelNode(name, contents string) *model.Node {
-	return &model.Node{
-		Name:     name,
-		Contents: contents,
+func removeExtension(filename string) string {
+	extension := filepath.Ext(filename)
+	return strings.TrimSuffix(filename, extension) 
+}
+
+func getFileNameIfExistsLocally(dir, filename string) string {
+	if fileExistsWithoutExtension(dir, filename) {
+		return filepath.Join(dir, filename)
+	} else {
+		return filename
 	}
+}
+
+func fileExistsWithoutExtension(dir string, filename string) bool {
+	var exists bool
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() && strings.HasPrefix(info.Name(), filename) {
+			exists = true
+		}
+		return nil
+	})
+	return exists
 }
 
 func getContentsOfNode(node *sitter.Node, file []byte) (contents string) {
