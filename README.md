@@ -3,10 +3,12 @@
 
 ### Get started
 First, fetch the dependencies:
+
 `go mod tidy`
+
 Then, run it:
+
 `go run cmd/main.go`
-optionally, you can build the binary and run that:
 
 
 ### Structure hints:
@@ -19,14 +21,16 @@ These standards were pulled from the (Golang Standards repo)[https://github.com/
 Feature Goals:
 1. Show relationships between code files (using import statements). This is the simplest, and the thing that has been mostly implmented thus far.
 2. Show inheritance relationships. This functionality already exists in some form in other tools.
-3. Show function stacks.
-4. Show data flow (related to 3)
-5. Eventually, add a configuration interface and a linter so that project managers can define engineering rules/best practices etc and this tool can enforce the rules (like a "design linter")
+3. Eventually, add a configuration interface and a linter so that project managers can define engineering rules/best practices etc and this tool can enforce the rules (like a "design linter")
+4. Show function stacks.
+5. Show data flow (related to 3)
+
 
 Components:
 - Database
   - right now, it uses Neo4J which comes with convenient graph visualization tools
   - In the future, using an embedded, lighter-weight database would be better
+  - Or, even better, we could ditch the database entirely and use an in-memory structure with support for serialization/deserialization for when we need to store the data. 
 - Parser
   - written in Go
   - handles using the tree-sitter parser to do things with your codebase
@@ -35,3 +39,5 @@ Components:
 - Frontend:
   - Right now, the neo4j-browser serves as a frontend
   - We need an interface to allow for different frontends, from React Flow to cli (bubble-tea?) to VSCode
+- Server:
+  - This will use an API that passes Protobuf objects to maintain type safety. The goal is to keep the frontend and backend separated, so that the frontend can be substituted out. 
