@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package graph;
+package protobuf;
 
 import "node.proto";
 import "edge.proto";
 
-option go_package = ".";
+option go_package = "github.com/carsoncall/giraph/internal/server/protobuf";
 
 message GraphResponse {
   repeated Node nodes = 1;

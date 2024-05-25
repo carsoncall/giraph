@@ -1,9 +1,12 @@
 syntax = "proto3";
 
-package graph;
+package protobuf;
 
-option go_package = ".";
+option go_package = "github.com/carsoncall/giraph/internal/server/protobuf";
 
 message GraphRequest {
-  repeated string node_names = 1;
+  string request = 1;
+  string project_root = 2;
+  optional int32 num_steps = 3;
+  optional string start_node_hash = 4;
 }

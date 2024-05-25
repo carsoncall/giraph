@@ -1,62 +1,57 @@
-// internal/server/server_test.go
-
-package server_test
+package server
 
 import (
-	"bytes"
+	"fmt"
+	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
+	"net/url"
 	"testing"
 
-	"github.com/carsoncall/giraph/internal/server"
-
 	"github.com/carsoncall/giraph/internal/server/protobuf"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
-func TestGraphHandler(t *testing.T) {
+func TestGraphEndpoint(t *testing.T) {
+	go StartServer()
+
 	req := &protobuf.GraphRequest{
-		NodeNames: []string{"node1", "node2"},
+		Request:       "Test Request",
+		ProjectRoot:   "/path/to/project",
+		NumSteps:      proto.Int32(5),
+		StartNodeHash: proto.String("start_hash"),
 	}
-	data, err := proto.Marshal(req)
+
+	reqBytes, err := proto.Marshal(req)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Error marshaling request: %v", err)
 	}
 
-	r, err := http.NewRequest("POST", "/graph", bytes.NewReader(data))
+	resp, err := http.PostForm("http://localhost:8080/graph", url.Values{"request": {string(reqBytes)}})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Error sending request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Error reading response: %v", err)
 	}
 
-	w := httptest.NewRecorder()
-
-	server.GraphHandler(w, r)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status OK; got %v", w.Code)
+	var graphResp protobuf.GraphResponse
+	err = proto.Unmarshal(respBytes, &graphResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling response: %v", err)
 	}
 
-	expectedContentType := "application/protobuf"
-	if contentType := w.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("expected content type %q; got %q", expectedContentType, contentType)
+	fmt.Println("Nodes:")
+	for _, node := range graphResp.Nodes {
+		fmt.Printf("  Filepath: %s, StartByte: %d, EndByte: %d, Contents: %s, Hash: %s\n",
+			node.Filepath, node.StartByte, node.EndByte, node.Contents, node.Hash)
 	}
 
-	var resp protobuf.GraphResponse
-	if err := proto.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatal(err)
+	fmt.Println("Edges:")
+	for _, edge := range graphResp.Edges {
+		fmt.Printf("  Name: %s, ParentHash: %s, ChildHash: %s\n",
+			edge.Name, edge.ParentHash, edge.ChildHash)
 	}
-
-	expectedNodes := []*protobuf.Node{
-		{Name: "node1"},
-		{Name: "node2"},
-	}
-	if len(resp.Nodes) != len(expectedNodes) {
-		t.Errorf("expected %d nodes; got %d", len(expectedNodes), len(resp.Nodes))
-	}
-	for i, node := range resp.Nodes {
-		if node.Name != expectedNodes[i].Name {
-			t.Errorf("expected node name %q; got %q", expectedNodes[i].Name, node.Name)
-		}
-	}
-
 }

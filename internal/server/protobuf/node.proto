@@ -1,10 +1,13 @@
 syntax = "proto3";
 
-package graph;
+package protobuf;
 
-option go_package = ".";
+option go_package = "github.com/carsoncall/giraph/internal/server/protobuf";
 
 message Node {
-  string name = 1;
-  string contents = 2;
+  string filepath = 1;
+  int64 start_byte = 2;
+  int64 end_byte = 3;
+  string contents = 4;
+  string hash = 5;
 }
