@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "github.com/carsoncall/giraph/internal/server/protobuf";
+
+message Edge {
+  string name = 1;
+  string parent_hash = 2;
+  string child_hash = 3;
+}
