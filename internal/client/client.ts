@@ -3,7 +3,6 @@ import { GraphRequest } from './src/graph_request_pb';
 import { GraphResponse } from './src/graph_response_pb';
 import { Node } from './src/node_pb';
 import { Edge } from './src/edge_pb';
-
 const request = new GraphRequest();
 request.setRequest('Test Request');
 request.setProjectRoot('/path/to/project');
