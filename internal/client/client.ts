@@ -9,7 +9,6 @@ request.setRequest('Test Request');
 request.setProjectRoot('/path/to/project');
 request.setNumSteps(5);
 request.setStartNodeHash('start_hash');
-
 const url = 'http://localhost:8080/graph';
 const requestData = request.serializeBinary();
 

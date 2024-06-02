@@ -1,3 +1,9 @@
+const grpcWeb = require('grpc-web');
+const { GraphRequest } = require('./src/graph_request_pb');
+const { GraphResponse } = require('./src/graph_response_pb');
+const { Node } = require('./src/node_pb');
+const { Edge } = require('./src/edge_pb');
+
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var graph_request_pb_1 = require("./src/graph_request_pb");

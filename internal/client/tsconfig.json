@@ -1,0 +1,18 @@
+{
+   "compilerOptions": {
+     "target": "es6",
+     "module": "commonjs",
+     "sourceMap": true,
+     "outDir": "dist",
+     "strict": true,
+     "esModuleInterop": true,
+     "allowSyntheticDefaultImports": true
+   },
+   "include": [
+     "src/**/*",
+     "client.ts"
+   ],
+   "exclude": [
+     "node_modules"
+   ]
+ }
